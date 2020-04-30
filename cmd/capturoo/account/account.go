@@ -8,7 +8,6 @@ import (
 
 	"capturoo-cli-tool-go/cmd/capturoo/app"
 	"capturoo-cli-tool-go/fbauth"
-	"capturoo-cli-tool-go/http"
 
 	"capturoo-cli-tool-go/cmd/capturoo/configmgr"
 
@@ -53,7 +52,8 @@ func NewCmdAccountLogin() *cobra.Command {
 			// prevent root level PersistentPreRun
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			v := cmd.Context().Value(app.ApplicationKey("appk"))
+			ctx := cmd.Context()
+			v := ctx.Value(app.ApplicationKey("appk"))
 			if v == nil {
 				fmt.Fprintf(os.Stderr, "failed to get application context")
 				os.Exit(1)
@@ -63,16 +63,22 @@ func NewCmdAccountLogin() *cobra.Command {
 			auth := fbauth.NewRESTClient()
 			var tart *fbauth.TokenAndRefreshToken
 			var developerKey string
+			autoconf, err := app.Client.AutoConf(ctx)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to auto configure via the endpoint.\n")
+				os.Exit(1)
+			}
+
 			if useEmailLogin {
 				email, password, err := readEmailAndPassword()
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "failed to get email/password: %v\n", err)
+					fmt.Fprintf(os.Stderr, "Failed to get email/password: %v\n", err)
 					os.Exit(1)
 				}
 
-				sir, err := auth.SignInWithEmailAndPassword(app.FirebaseAPIKey, email, string(password))
+				sir, err := auth.SignInWithEmailAndPassword(autoconf.Data.FirebaseConfig.APIKey, email, string(password))
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "failed to signin with email and password: %v\n", err)
+					fmt.Fprintf(os.Stderr, "Failed to signin with email and password: %v\n", err)
 					os.Exit(1)
 				}
 				tart = &fbauth.TokenAndRefreshToken{
@@ -83,34 +89,32 @@ func NewCmdAccountLogin() *cobra.Command {
 				var err error
 				developerKey, err = readDeveloperKey()
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "failed to get developer key: %v\n", err)
+					fmt.Fprintf(os.Stderr, "Failed to get developer key: %v\n", err)
 					os.Exit(1)
 				}
 
 				// Signin With the developer key.
-				client := http.NewClient(app.Endpoint)
-				token, _, err := client.SignInWithDevKey(string(developerKey))
+				token, _, err := app.Client.SignInWithDevKey(string(developerKey))
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "failed to sign in using developer key: %v\n", err)
+					fmt.Fprintf(os.Stderr, "Failed to sign in using developer key: %v\n", err)
 					os.Exit(1)
 				}
 
-				tart, err = auth.ExchangeCustomTokenForIDAndRefreshToken(app.FirebaseAPIKey, token)
+				tart, err = auth.ExchangeCustomTokenForIDAndRefreshToken(autoconf.Data.FirebaseConfig.APIKey, token)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "%+v\n", err)
+					fmt.Fprintf(os.Stderr, "Failed to exchange custom token for refresh: %+v\n", err)
 					os.Exit(1)
 				}
 			}
 
-			err := configmgr.WriteTokenAndRefreshToken(app.TokenFilename, tart)
-			if err != nil {
+			if err = configmgr.WriteTokenAndRefreshToken(app.TokenFilename, tart); err != nil {
 				fmt.Fprintf(os.Stderr, "%+v\n", err)
 				os.Exit(1)
 			}
 
 			jwtData, err := configmgr.ParseJWT(tart.IDToken)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to parse JWT: %v", err)
+				fmt.Fprintf(os.Stderr, "Failed to parse JWT: %v", err)
 				os.Exit(1)
 			}
 

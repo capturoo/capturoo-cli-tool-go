@@ -23,26 +23,26 @@ import (
 
 var version string
 var endpoint string
-var firebaseAPIKey string
 var gitCommit string
 
 func main() {
+	overrideEndpoint, found := os.LookupEnv("CAPTUROO_CLI_ENDPOINT")
+	if found {
+		// TODO: sanitise the endpoint URL
+		endpoint = overrideEndpoint
+	}
 	tokenFilename, err := urlToHostName(endpoint)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%+v\n", err)
 		os.Exit(1)
 	}
-	fbPubKey, found := os.LookupEnv("CAPTUROO_FIREBASE_PUBLIC_KEY")
-	if found {
-		firebaseAPIKey = fbPubKey
-	}
 
 	appv := &app.Ctx{
-		Version:        version,
-		Endpoint:       endpoint,
-		FirebaseAPIKey: firebaseAPIKey,
-		GitCommit:      gitCommit,
-		TokenFilename:  tokenFilename,
+		Version:       version,
+		Endpoint:      endpoint,
+		GitCommit:     gitCommit,
+		TokenFilename: tokenFilename,
+		Client:        http.NewClient(endpoint),
 	}
 
 	root := cobra.Command{
@@ -58,7 +58,6 @@ func main() {
 			}
 			app := v.(*app.Ctx)
 
-			app.Client = http.NewClient(app.Endpoint)
 			tart, err := configmgr.ReadTokenAndRefreshToken(app.TokenFilename)
 			if errors.Is(err, configmgr.ErrTokenFileNotFound) {
 				fmt.Fprintf(os.Stderr, "No account configured. Run capturoo account login to begin.\n")
@@ -68,8 +67,14 @@ func main() {
 			// If the current token has expired, exchange the refresh token
 			// for a new one.
 			if errors.Is(err, configmgr.ErrTokenExpired) {
+				autoconf, err := app.Client.AutoConf(ctx)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to auto configure via the endpoint.\n")
+					os.Exit(1)
+				}
+
 				auth := fbauth.NewRESTClient()
-				tart, err = auth.ExchangeRefreshTokenForIDToken(app.FirebaseAPIKey, tart.RefreshToken)
+				tart, err = auth.ExchangeRefreshTokenForIDToken(autoconf.Data.FirebaseConfig.APIKey, tart.RefreshToken)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "%+v\n", err)
 					os.Exit(1)

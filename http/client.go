@@ -86,6 +86,25 @@ type Webhook struct {
 	Modified  time.Time `json:"modified"`
 }
 
+// FirebaseConfig type
+type FirebaseConfig struct {
+	APIKey            string `json:"apiKey"`
+	AuthDomain        string `json:"authDomain"`
+	DatabaseURL       string `json:"databaseURL"`
+	ProjectID         string `json:"projectId"`
+	StorageBucket     string `json:"storageBucket,omitempty"`
+	MessagingSenderID string `json:"messagingSenderId,omitempty"`
+	AppID             string `json:"appId,omitempty"`
+}
+
+// AutoConf type
+type AutoConf struct {
+	Object string `json:"object"`
+	Data   struct {
+		FirebaseConfig *FirebaseConfig `json:"firebaseConfig"`
+	} `json:"data"`
+}
+
 // ErrBucketCodeExists occurs when attempting to create a new bucket that already exists.
 var ErrBucketCodeExists = errors.New("bucket/bucket-code-exists")
 
@@ -175,6 +194,22 @@ func (c *Client) SignInWithDevKey(key string) (token string, account *Account, e
 		return "", nil, errors.Wrap(err, "custom token json decode error")
 	}
 	return ct.CustomToken, ct.Account, nil
+}
+
+// AutoConf retrieves the firebase public config.
+func (c *Client) AutoConf(ctx context.Context) (*AutoConf, error) {
+	url := c.endpoint + "/autoconf"
+	res, err := c.request(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "request failed")
+	}
+	defer res.Body.Close()
+
+	var autoconf AutoConf
+	if err := json.NewDecoder(res.Body).Decode(&autoconf); err != nil {
+		return nil, errors.Wrap(err, "json decode")
+	}
+	return &autoconf, nil
 }
 
 // CreateBucket create a new bucket.

@@ -11,12 +11,11 @@ type ApplicationKey string
 
 // Ctx global context
 type Ctx struct {
-	Version        string
-	Endpoint       string
-	FirebaseAPIKey string
-	GitCommit      string
-	TokenFilename  string
-	Client         *http.Client
-	TART           *fbauth.TokenAndRefreshToken
-	JWTData        *configmgr.JWTData
+	Version       string
+	Endpoint      string
+	GitCommit     string
+	TokenFilename string
+	Client        *http.Client
+	TART          *fbauth.TokenAndRefreshToken
+	JWTData       *configmgr.JWTData
 }

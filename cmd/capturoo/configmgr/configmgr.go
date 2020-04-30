@@ -49,12 +49,6 @@ type User struct {
 // ErrTokenExpired sentinel value
 var ErrTokenExpired error = errors.New("token-expired")
 
-func myTest() {
-	fbRESTClient := fbauth.NewRESTClient()
-
-	fmt.Printf("%#v\n", fbRESTClient)
-}
-
 // ReadTokenAndRefreshToken reads the token and refresh token from the filesystem
 // or returns nil if the file has not yet been created.
 func ReadTokenAndRefreshToken(filename string) (*fbauth.TokenAndRefreshToken, error) {
