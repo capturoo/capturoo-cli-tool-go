@@ -53,7 +53,7 @@ func main() {
 			ctx := cmd.Context()
 			v := ctx.Value(app.ApplicationKey("appk"))
 			if v == nil {
-				fmt.Fprintf(os.Stderr, "failed to get application context")
+				fmt.Fprintf(os.Stderr, "Failed to get application context.\n")
 				os.Exit(1)
 			}
 			app := v.(*app.Ctx)
@@ -62,11 +62,9 @@ func main() {
 			if errors.Is(err, configmgr.ErrTokenFileNotFound) {
 				fmt.Fprintf(os.Stderr, "No account configured. Run capturoo account login to begin.\n")
 				os.Exit(1)
-			}
-
-			// If the current token has expired, exchange the refresh token
-			// for a new one.
-			if errors.Is(err, configmgr.ErrTokenExpired) {
+			} else if errors.Is(err, configmgr.ErrTokenExpired) {
+				// If the current token has expired, exchange the refresh token
+				// for a new one.
 				autoconf, err := app.Client.AutoConf(ctx)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to auto configure via the endpoint.\n")
@@ -76,16 +74,14 @@ func main() {
 				auth := fbauth.NewRESTClient()
 				tart, err = auth.ExchangeRefreshTokenForIDToken(autoconf.Data.FirebaseConfig.APIKey, tart.RefreshToken)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "%+v\n", err)
+					fmt.Fprintf(os.Stderr, "Exchange Refresh Token for ID Token failed: %+v\n", err)
 					os.Exit(1)
 				}
 				if err := configmgr.WriteTokenAndRefreshToken(app.TokenFilename, tart); err != nil {
-					fmt.Fprintf(os.Stderr, "main: failed to write new token: %+v\n", err)
+					fmt.Fprintf(os.Stderr, "Failed to write new token: %+v\n", err)
 					os.Exit(1)
 				}
-			}
-
-			if err != nil {
+			} else if err != nil {
 				fmt.Fprintf(os.Stderr, "%+v\n", err)
 				os.Exit(1)
 			}
@@ -95,7 +91,7 @@ func main() {
 
 			app.JWTData, err = configmgr.ParseJWT(tart.IDToken)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to parse JWT: %+v", err)
+				fmt.Fprintf(os.Stderr, "Failed to parse JWT: %+v\n", err)
 				os.Exit(1)
 			}
 		},
