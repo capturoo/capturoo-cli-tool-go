@@ -47,7 +47,7 @@ type Bucket struct {
 	Object               string `json:"object"`
 	BucketID             string `json:"bucketId"`
 	AccountID            string `json:"accountId"`
-	ResourceName         string `json:"resourceName"`
+	BucketCode           string `json:"bucketCode"`
 	BucketName           string `json:"bucketName"`
 	PublicAPIKey         string `json:"publicApiKey"`
 	scheduledForDeletion bool
@@ -264,10 +264,10 @@ func (c *Client) GetBucket(ctx context.Context, bucketID string) (*Bucket, error
 func (c *Client) GetBuckets(ctx context.Context, accountID string) ([]*Bucket, error) {
 	u, err := url.Parse(c.endpoint)
 	if err != nil {
-		return nil, nil
+		return nil, errors.Wrap(err, "url parse")
 	}
 
-	// build the URL including Query params
+	// build the URL including query params
 	v := url.Values{}
 	v.Set("accountId", accountID)
 	uri := url.URL{
@@ -280,7 +280,7 @@ func (c *Client) GetBuckets(ctx context.Context, accountID string) ([]*Bucket, e
 
 	res, err := c.request(http.MethodGet, uri.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "request failed: %w")
+		return nil, errors.Wrap(err, "http get request failed")
 	}
 	defer res.Body.Close()
 
@@ -292,6 +292,34 @@ func (c *Client) GetBuckets(ctx context.Context, accountID string) ([]*Bucket, e
 		return nil, errors.Wrap(err, "json decode")
 	}
 	return container.Data, nil
+}
+
+// UpdateBucket updates the details of a bucket
+func (c *Client) UpdateBucket(ctx context.Context, bucketID, bucketName string) (*Bucket, error) {
+	url := fmt.Sprintf("%s/buckets/%s", c.endpoint, bucketID)
+	payload := struct {
+		BucketName string `json:"bucketName"`
+	}{
+		BucketName: bucketName,
+	}
+	buf := new(bytes.Buffer)
+	json.NewEncoder(buf).Encode(payload)
+
+	res, err := c.request(http.MethodPatch, url, buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "http patch request failed")
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode >= 400 {
+		return nil, errorResponse(res)
+	}
+
+	var bucket Bucket
+	if err := json.NewDecoder(res.Body).Decode(&bucket); err != nil {
+		return nil, errors.Wrap(err, "json decode")
+	}
+	return &bucket, nil
 }
 
 // DeleteBucket deletes a bucket or schedules it for deletion.

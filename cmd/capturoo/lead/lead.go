@@ -55,15 +55,15 @@ func NewCmdLeadExport() *cobra.Command {
 				fmt.Fprintf(os.Stderr, "failed to list buckets: %v\n", err)
 				os.Exit(1)
 			}
-			resourceNameMap := make(map[string]string, 0)
+			bucketCodeMap := make(map[string]string, 0)
 			publicAPIKeyMap := make(map[string]string, 0)
 			for _, b := range buckets {
-				resourceNameMap[b.ResourceName] = b.BucketID
+				bucketCodeMap[b.BucketCode] = b.BucketID
 				publicAPIKeyMap[b.PublicAPIKey] = b.BucketID
 			}
 
 			resourceName := args[0]
-			if _, ok := resourceNameMap[resourceName]; !ok {
+			if _, ok := bucketCodeMap[resourceName]; !ok {
 				fmt.Fprintf(os.Stderr, "Bucket with resource name %q not found.\n", resourceName)
 				os.Exit(1)
 			}
@@ -84,7 +84,7 @@ func NewCmdLeadExport() *cobra.Command {
 				}()
 			}
 
-			if err := app.Client.WriteLeads(ctx, format, f, resourceNameMap[resourceName]); err != nil {
+			if err := app.Client.WriteLeads(ctx, format, f, bucketCodeMap[resourceName]); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to output leads: %v\n", err)
 				os.Exit(1)
 			}

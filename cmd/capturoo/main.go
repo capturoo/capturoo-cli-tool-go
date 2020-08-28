@@ -67,10 +67,9 @@ func main() {
 				// for a new one.
 				autoconf, err := app.Client.AutoConf(ctx)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to auto configure via the endpoint.\n")
+					fmt.Fprintf(os.Stderr, "Failed to auto configure via the endpoint %v.\n", err)
 					os.Exit(1)
 				}
-
 				auth := fbauth.NewRESTClient()
 				tart, err = auth.ExchangeRefreshTokenForIDToken(autoconf.Data.FirebaseConfig.APIKey, tart.RefreshToken)
 				if err != nil {

@@ -65,7 +65,7 @@ func NewCmdAccountLogin() *cobra.Command {
 			var developerKey string
 			autoconf, err := app.Client.AutoConf(ctx)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to auto configure via the endpoint.\n")
+				fmt.Fprintf(os.Stderr, "Failed to auto configure via the endpoint: %v.\n", err)
 				os.Exit(1)
 			}
 
