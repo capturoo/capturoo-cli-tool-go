@@ -24,15 +24,15 @@ func NewCmdLead() *cobra.Command {
 func NewCmdLeadExport() *cobra.Command {
 	var format, output string
 	cmd := &cobra.Command{
-		Use:   "export RESOURCE_NAME",
+		Use:   "export BUCKET_CODE",
 		Short: "Export leads from a bucket",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return errors.New("missing RESOURCE_NAME argument")
+				return errors.New("missing BUCKET_CODE argument")
 			}
 
-			if format != "json" && format != "yaml" && format != "csv" {
-				return errors.New("format must be either json, yaml or csv")
+			if format != "json" && format != "yaml" {
+				return errors.New("format must be either json or yaml")
 			}
 
 			return nil
@@ -48,7 +48,6 @@ func NewCmdLeadExport() *cobra.Command {
 
 			// build lookup tables of both:
 			//   bucketCode   -> bucketId
-			//   publicAPIKey -> bucketId
 			// as the user might want to locate a bucket by id, code or public key.
 			buckets, err := app.Client.GetBuckets(ctx, app.JWTData.CapAID)
 			if err != nil {
@@ -56,15 +55,13 @@ func NewCmdLeadExport() *cobra.Command {
 				os.Exit(1)
 			}
 			bucketCodeMap := make(map[string]string, 0)
-			publicAPIKeyMap := make(map[string]string, 0)
 			for _, b := range buckets {
 				bucketCodeMap[b.BucketCode] = b.BucketID
-				publicAPIKeyMap[b.PublicAPIKey] = b.BucketID
 			}
 
-			resourceName := args[0]
-			if _, ok := bucketCodeMap[resourceName]; !ok {
-				fmt.Fprintf(os.Stderr, "Bucket with resource name %q not found.\n", resourceName)
+			bucketCode := args[0]
+			if _, ok := bucketCodeMap[bucketCode]; !ok {
+				fmt.Fprintf(os.Stderr, "Bucket with code %q not found.\n", bucketCode)
 				os.Exit(1)
 			}
 
@@ -84,14 +81,14 @@ func NewCmdLeadExport() *cobra.Command {
 				}()
 			}
 
-			if err := app.Client.WriteLeads(ctx, format, f, bucketCodeMap[resourceName]); err != nil {
+			if err := app.Client.WriteLeads(ctx, format, f, bucketCodeMap[bucketCode]); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to output leads: %v\n", err)
 				os.Exit(1)
 			}
 		},
 	}
 
-	cmd.Flags().StringVarP(&format, "format", "f", "json", "export format json, yaml or csv")
+	cmd.Flags().StringVarP(&format, "format", "f", "json", "export format json or yaml")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output to file")
 	return cmd
 }
